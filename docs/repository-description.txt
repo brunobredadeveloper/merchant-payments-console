@@ -1,0 +1,1 @@
+Local payment simulation backend and merchant dashboard with SQLite idempotency, reconciliation, refunds and duplicate-event handling.
