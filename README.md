@@ -1,42 +1,57 @@
 # Merchant Payments Console
 
-A fictional merchant backend and dashboard by Bruno Breda. Integrates with `tap-on-phone-demo` to demonstrate persisted idempotency, uncertain payment responses and reconciliation. No real payment rails or card data.
+**Backend e painel web para estudar pagamentos idempotentes, estornos e conciliação.**
 
-## Run
+Projeto de **Bruno Breda · breda_dev**. Oferecer um backend local reproduzível para o Tap Terminal, incluindo autorização persistida antes de uma resposta atrasada.
 
-Python 3.11+; no third-party runtime dependencies.
+**Plataforma:** Python 3.11+ · HTTP · SQLite · painel HTML  
+**Estado:** implementação de portfólio em evolução; esteira aprovada na execução referenciada.
+
+[Fluxos e demonstração](docs/fluxos.md) · [Engenharia](docs/engenharia.md) · [Builds e evidências](docs/evidencias.md) · [Portfólio completo](https://github.com/brunobredadeveloper/breda-park-wash/blob/main/docs/portfolio-breda-dev.md)
+
+## O que você pode avaliar
+
+- API HTTP e dashboard de operações, aprovados e estornos.
+- Idempotência persistida em SQLite e transações com BEGIN IMMEDIATE.
+- Resposta perdida simulada, consulta por chave e estorno integral idempotente.
+- Deduplicação de eventos e preservação de estornos diante de eventos tardios.
+
+## Experiência e navegação
+
+Veja o [mapa das telas e o roteiro de avaliação](docs/fluxos.md). Esta revisão não adiciona capturas sem origem verificável; imagens conceituais não são apresentadas como telas do aplicativo.
+
+## Fluxo principal
+
+1. Execute python server.py e abra http://127.0.0.1:8080.
+2. Crie uma cobrança aprovada e atualize a lista.
+3. Reenvie a mesma chave pela API; confira o mesmo identificador.
+4. Use lost_response e consulte o resultado pela chave original.
+5. Estorne uma aprovação e repita a solicitação; o estorno não pode duplicar.
+
+## Executar e validar
+
+Python 3.11 ou superior. Sem dependências externas de runtime. Armazenamento local em payments.sqlite3, ignorado pelo Git.
 
 ```sh
 python server.py
-# Open http://127.0.0.1:8080
+# Em outro terminal:
 python -m unittest -v
 ```
 
-SQLite stores payments and processed events in `payments.sqlite3` (ignored by Git). Restarting does not lose idempotency. `PAYMENTS_DB`, `HOST`, `PORT` can override defaults.
+[Abrir a execução verificada no GitHub Actions](https://github.com/brunobredadeveloper/merchant-payments-console/actions/runs/38166073285). A conclusão dessa execução é **success**; consulte os artefatos e a revisão de código em [evidências](docs/evidencias.md).
 
-For Android emulator use `http://10.0.2.2:8080`. For USB device run `adb reverse tcp:8080 tcp:8080` and use `http://127.0.0.1:8080`. The service binds loopback by default. It has no authentication and is a local lab; do not deploy it publicly.
+## Limites do produto
 
-## HTTP contract
+Laboratório local sem autenticação, TLS, multiempresa, adquirente ou cartões. Não exponha o serviço à internet. Não gera APK ou IPA. O navegador do painel não foi validado visualmente nesta rodada.
 
-| Method | Path | Behavior |
-|---|---|---|
-| POST | `/api/payments` | JSON `idempotencyKey`, `amountInCents`, `scenario` |
-| GET | `/api/payments/by-key/{key}` | Reconcile persisted outcome |
-| GET | `/api/payments` | List ledger |
-| POST | `/api/payments/{id}/refund` | Idempotent full simulated refund |
-| POST | `/api/events` | `eventId`, `paymentId`, `kind`: deduplicate corroborating simulator events |
-| GET | `/health` | Service health |
+## Para quem revisa o portfólio
 
-Amounts are BRL integer cents, positive and capped at 1,000,000 BRL. Scenarios: `approve`, `decline`, `lost_response`. A key reused with changed amount or scenario returns 409. Exact replay returns the original payment with 200; first creation returns 201.
+Equipes que querem demonstrar o contrato entre aplicativo mobile e um serviço de pagamentos simulado. As [decisões de engenharia](docs/engenharia.md) conectam responsabilidades, arquivos e testes. O [roteiro funcional](docs/fluxos.md) ajuda a avaliar comportamento, falhas e preservação de dados. Funcionalidade planejada não é apresentada como implementada.
 
-`lost_response` commits an approval before delaying the first HTTP response by 5 seconds. Android times out after 2 seconds; query by the original key shows approval. Subsequent identical submissions do not delay or create another charge.
+## Próximos passos
 
-Dashboard shows net approved sales, operation count, refunded total, refunds and duplicate event replay. Its totals constitute a live ledger summary, not a persisted daily settlement or accounting report. Events are simulated through the local API; no external webhook provider is connected.
+- Validar os percursos no dispositivo real e registrar os resultados.
+- Revisar acessibilidade, interrupções e falhas de armazenamento/rede aplicáveis.
+- Concluir requisitos de distribuição, suporte e segurança antes de uso comercial.
 
-## Design
-
-`BEGIN IMMEDIATE` plus a unique key makes concurrent retries atomic. Event IDs reject conflicting reuse. Late approval events never undo refunds. SQLite transactions cover mutations and associated ledger events. A refund preserves the original charge identifier.
-
-## Validation and limits
-
-11 automated tests passed: restart replay, concurrent requests, payload conflict, invalid amounts, refund replay, declined refund, event replay/conflict, late event, committed lost-response state and HTTP contract. The HTTP timeout/reconciliation test verifies approval after a lost response. Browser rendering has not been visually verified. No auth, external payment provider, partial refunds, multi-merchant tenancy or scheduled settlement. These are deliberate future extensions.
+Código, mídias e dependências mantêm seus respectivos termos. Consulte os créditos e os avisos existentes no repositório.
